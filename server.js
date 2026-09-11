@@ -25,28 +25,10 @@ const app = express();
 app.use(cors({ origin: '*', methods: ['GET', 'POST', 'OPTIONS'], allowedHeaders: '*' }));
 app.options('*', cors());
 
-// ── Secret-token guard ────────────────────────────────────────────────────────
-const PROXY_SECRET = process.env.PROXY_SECRET || '';
 
-function requireSecret(req, res, next) {
-    if (!PROXY_SECRET) {
-        // No secret configured — warn loudly but allow (so dev/test works without .env)
-        console.warn('[PROXY] WARNING: PROXY_SECRET is not set. Set it in Vercel env vars!');
-        return next();
-    }
-    const clientSecret = req.headers['x-proxy-secret'] || '';
-    if (clientSecret !== PROXY_SECRET) {
-        return res.status(401).json({ error: 'Unauthorized: invalid proxy secret' });
-    }
-    next();
-}
-
-// Apply secret guard to all proxy routes
-app.use('/proxy', requireSecret);
-
-// ── Health check (no secret needed) ──────────────────────────────────────────
+// ── Health check ──────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => {
-    res.json({ status: 'ok', secret_configured: !!PROXY_SECRET });
+    res.json({ status: 'ok' });
 });
 
 // ── OpenAI proxy ──────────────────────────────────────────────────────────────
