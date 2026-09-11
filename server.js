@@ -6,13 +6,9 @@
  * Routes:
  *   GET  /health              → status check
  *   POST /proxy/openai/*      → https://api.openai.com/*   (streaming)
- *   ANY  /proxy/gemini/*      → https://generativelanguage.googleapis.com/*
  *
- * Security: every request must include the header:
- *   x-proxy-secret: <value of PROXY_SECRET env var>
- *
- * The Electron app forwards the real API keys in Authorization /
- * x-goog-api-key headers. No keys are stored here.
+ * The Electron app forwards the real API key in the Authorization header.
+ * No keys are stored here.
  */
 
 const express = require('express');
@@ -85,54 +81,6 @@ app.all('/proxy/openai/*', async (req, res) => {
     }
 });
 
-// ── Gemini / Google GenAI proxy ───────────────────────────────────────────────
-// Electron sends:  POST https://your-app.vercel.app/proxy/gemini/...
-// Forwarded to:    POST https://generativelanguage.googleapis.com/...
-app.all('/proxy/gemini/*', async (req, res) => {
-    const apiPath = req.path.replace(/^\/proxy\/gemini/, '') || '/';
-    const query = req.url.includes('?') ? '?' + req.url.split('?').slice(1).join('?') : '';
-    const targetUrl = `https://generativelanguage.googleapis.com${apiPath}${query}`;
-
-    console.log(`[PROXY][Gemini] ${req.method} ${apiPath}`);
-
-    const forwardHeaders = {};
-    for (const [key, val] of Object.entries(req.headers)) {
-        if (['host', 'x-proxy-secret', 'connection', 'transfer-encoding'].includes(key)) continue;
-        forwardHeaders[key] = val;
-    }
-
-    try {
-        const body = await readBody(req);
-
-        const upstreamRes = await fetch(targetUrl, {
-            method: req.method,
-            headers: forwardHeaders,
-            body: body || undefined,
-            duplex: 'half',
-        });
-
-        res.status(upstreamRes.status);
-        upstreamRes.headers.forEach((val, key) => {
-            if (['transfer-encoding', 'connection'].includes(key.toLowerCase())) return;
-            res.setHeader(key, val);
-        });
-
-        if (upstreamRes.body) {
-            const reader = upstreamRes.body.getReader();
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                res.write(value);
-            }
-        }
-        res.end();
-    } catch (err) {
-        console.error('[PROXY][Gemini] Error:', err.message);
-        if (!res.headersSent) {
-            res.status(502).json({ error: 'Proxy error: ' + err.message });
-        }
-    }
-});
 
 // ── Helper: read raw request body as a Buffer ─────────────────────────────────
 function readBody(req) {
@@ -150,7 +98,7 @@ if (require.main === module) {
     const PORT = process.env.PROXY_PORT || 3333;
     app.listen(PORT, '127.0.0.1', () => {
         console.log(`[PROXY] Listening on http://127.0.0.1:${PORT}`);
-        console.log(`[PROXY] Routes: /proxy/openai/* and /proxy/gemini/*`);
+        console.log(`[PROXY] Route: /proxy/openai/*`);
         if (process.send) process.send({ type: 'ready', port: PORT });
     });
 }
