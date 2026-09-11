@@ -40,7 +40,8 @@ app.all('/proxy/openai/*', async (req, res) => {
     // Forward headers — drop host, keep auth and content-type
     const forwardHeaders = {};
     for (const [key, val] of Object.entries(req.headers)) {
-        if (['host', 'x-proxy-secret', 'connection', 'transfer-encoding'].includes(key)) continue;
+        const k = key.toLowerCase();
+        if (['host', 'x-proxy-secret', 'connection', 'transfer-encoding', 'accept-encoding'].includes(k)) continue;
         forwardHeaders[key] = val;
     }
 
@@ -59,7 +60,8 @@ app.all('/proxy/openai/*', async (req, res) => {
         // Copy status and headers back
         res.status(upstreamRes.status);
         upstreamRes.headers.forEach((val, key) => {
-            if (['transfer-encoding', 'connection'].includes(key.toLowerCase())) return;
+            const k = key.toLowerCase();
+            if (['transfer-encoding', 'connection', 'content-encoding', 'content-length'].includes(k)) return;
             res.setHeader(key, val);
         });
 
