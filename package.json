@@ -1,0 +1,18 @@
+{
+  "name": "s1-module-proxy",
+  "version": "2.0.0",
+  "description": "Vercel-deployed proxy server to bypass network restrictions for AI API calls",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
